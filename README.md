@@ -1,6 +1,6 @@
 # SETR_2
 
-Trabalho 1 da unidade curricular de Sistemas Embutidos e de Tempo Real (SETR)
+Trabalho 2 da unidade curricular de Sistemas Embutidos e de Tempo Real (SETR)
 
 Realizdo por:
 
