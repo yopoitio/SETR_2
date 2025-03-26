@@ -3,6 +3,7 @@
 /* ****************************** */
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 #include "cmdproc.h"
 
@@ -108,7 +109,21 @@ int calcChecksum(unsigned char * buf, int nbytes) {
 	
 	/* That is your work to do. In this example I just assume 	*/
 	/* that the checksum is always OK.							*/	
-	return 1;		
+
+	int checksum_calculated = 0, checksum_received = 0;
+
+	for (int i = 0; i < nbytes; i++) {
+		checksum_calculated += (int)buf[i];
+	}
+
+	for (int i = nbytes; i < nbytes+3; i++) {
+		checksum_received += (int)(buf[i]-48)*pow(10,nbytes-i+2);
+	}
+
+	if(checksum_calculated%255 == checksum_received)
+		return checksum_received;
+	else
+		return 0;
 }
 
 /*
