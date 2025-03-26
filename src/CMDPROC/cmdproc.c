@@ -55,7 +55,14 @@ int cmdProcessor(void)
 				}
 				
 				/* Check checksum */
-				if(!(calcChecksum(&(UARTRxBuffer[i+1]),2))) {
+				int checksum_calculated = calcChecksum(&(UARTRxBuffer[i+1]),2);
+				int checksum_received = 0;
+
+				for (int i = 3; i <= 5; i++) {
+					checksum_received += (int)(UARTRxBuffer[i]-48)*pow(10,5-i);
+				}
+			
+				if(checksum_calculated%255 != checksum_received) {
 					return -3;
 				}
 				
@@ -83,6 +90,15 @@ int cmdProcessor(void)
 				rxBufLen = 0;	
 				
 				return 0;
+
+			case 'A':
+				break;
+			
+			case 'L':
+				break;
+		
+			case 'R':
+				break;
 								
 			default:
 				/* If code reaches this place, the command is not recognized */
@@ -110,20 +126,13 @@ int calcChecksum(unsigned char * buf, int nbytes) {
 	/* That is your work to do. In this example I just assume 	*/
 	/* that the checksum is always OK.							*/	
 
-	int checksum_calculated = 0, checksum_received = 0;
+	int checksum = 0;
 
 	for (int i = 0; i < nbytes; i++) {
-		checksum_calculated += (int)buf[i];
+		checksum += (int)buf[i];
 	}
 
-	for (int i = nbytes; i < nbytes+3; i++) {
-		checksum_received += (int)(buf[i]-48)*pow(10,nbytes-i+2);
-	}
-
-	if(checksum_calculated%255 == checksum_received)
-		return checksum_received;
-	else
-		return 0;
+	return checksum;
 }
 
 /*
