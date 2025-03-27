@@ -6,6 +6,7 @@
 #include <math.h>
 
 #include "cmdproc.h"
+#include "../SENSORS/sensors.h"
 
 /* Internal variables */
 /* Used as part of the UART emulation */
