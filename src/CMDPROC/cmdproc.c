@@ -2,6 +2,7 @@
 /* See cmdProc.h for indications  */
 /* ****************************** */
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include <math.h>
 
@@ -88,19 +89,58 @@ int cmdProcessor(void)
 				/* command from the RX buffer. I'm just resetting it, which is not 	*/
 				/* a good solution, as a new command could be in progress and		*/
 				/* resetting  will generate errors									*/
-				rxBufLen = 0;	
+				rxBufLen = 0;
 				
 				return 0;
 
 			case 'A':
-				break;
-			
+				if(UARTRxBuffer[rxBufLen-1] != EOF_SYM) return -1;
+				if(rxBufLen != i+6) return -4;
+
+				for(int j = i+2; j < rxBufLen; j++) {
+					if((j == rxBufLen-1 && UARTRxBuffer[j] != EOF_SYM) || (j != rxBufLen-1 && (UARTRxBuffer[j] < '0' || UARTRxBuffer[j] > '9'))) {
+						return -2;
+					}
+				}
+				checksum_calculated = calcChecksum(&UARTRxBuffer[i+1], 1);
+				checksum_received = 100*(UARTRxBuffer[i+2] - '0') + 10*(UARTRxBuffer[i+3] - '0') + (UARTRxBuffer[i+4] - '0');
+				if (checksum_calculated != checksum_received) { // VER O %255 AQUI
+					return -3;
+                }
+				return 0;
 			case 'L':
-				break;
-		
+				if(UARTRxBuffer[rxBufLen-1] != EOF_SYM) return -1;
+				if(rxBufLen != i+7) return -4;
+
+				sid = UARTRxBuffer[i+2];
+				if(sid != 't' && sid != 'h' && sid != 'c') return -2;
+
+				for(int j = i+3; j < rxBufLen; j++) {
+					if((j == rxBufLen-1 && UARTRxBuffer[j] != EOF_SYM) || (j != rxBufLen-1 && (UARTRxBuffer[j] < '0' || UARTRxBuffer[j] > '9'))) {
+						return -2;
+					}
+				}
+				checksum_calculated = calcChecksum(&UARTRxBuffer[i+1], 2);
+				checksum_received = 100*(UARTRxBuffer[i+3] - '0') + 10*(UARTRxBuffer[i+4] - '0') + (UARTRxBuffer[i+5] - '0');
+				if (checksum_calculated != checksum_received) { // VER O %255 AQUI
+					return -3;
+				}
+				return 0;
 			case 'R':
-				break;
-								
+				if(UARTRxBuffer[rxBufLen-1] != EOF_SYM) return -1;
+				if(rxBufLen != i+6) return -4;
+
+				for(int j = i+2; j < rxBufLen; j++) {
+					if((j == rxBufLen-1 && UARTRxBuffer[j] != EOF_SYM) || (j != rxBufLen-1 && (UARTRxBuffer[j] < '0' || UARTRxBuffer[j] > '9'))) {
+						return -2;
+					}
+				}
+				checksum_calculated = calcChecksum(&UARTRxBuffer[i+1], 1);
+				checksum_received = 100*(UARTRxBuffer[i+2] - '0') + 10*(UARTRxBuffer[i+3] - '0') + (UARTRxBuffer[i+4] - '0');
+				if (checksum_calculated != checksum_received) { // VER O %255 AQUI
+					return -3;
+				}
+				return 0;
 			default:
 				/* If code reaches this place, the command is not recognized */
 				return -2;				
