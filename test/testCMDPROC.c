@@ -5,11 +5,9 @@
 void setUp(void) {
 	resetRxBuffer();
 	resetTxBuffer();
-	return NULL;
 }
 
 void tearDown(void) {
-	return NULL;
 }
 
 void test_valid_command_A(void) {
@@ -28,7 +26,7 @@ void test_invalid_command_A(void) {
 	rxChar('6');
 	rxChar('5');
 	rxChar('!');
-	TEST_ASSERT_EQUAL(-4, cmdProcessor());
+	TEST_ASSERT_EQUAL(-1, cmdProcessor());
 }
 
 void test_invalid_command_P(void) {
@@ -38,7 +36,7 @@ void test_invalid_command_P(void) {
 	rxChar('8');
 	rxChar('0');
 	rxChar('!');
-	TEST_ASSERT_EQUAL(-2, cmdProcessor());
+	TEST_ASSERT_EQUAL(-1, cmdProcessor());
 }
 
 void test_invalid_checksum(void) {
@@ -67,7 +65,7 @@ void test_missing_start_symbol(void) {
 	rxChar('0');
 	rxChar('0');
 	rxChar('!');
-	TEST_ASSERT_EQUAL(-4, cmdProcessor());
+	TEST_ASSERT_EQUAL(-1, cmdProcessor());
 }
 
 void test_missing_end_symbol(void) {
@@ -82,23 +80,11 @@ void test_missing_end_symbol(void) {
 void test_valid_command_L(void) {
 	rxChar('#');
 	rxChar('L');
-	rxChar('c'); // CO2 variable
-	rxChar('1');
+	rxChar('0');
 	rxChar('7');
-	rxChar('5');
+	rxChar('6');
 	rxChar('!');
 	TEST_ASSERT_EQUAL(0, cmdProcessor());
-}
-
-void test_invalid_command_L(void) {
-	rxChar('#');
-    rxChar('L');
-    rxChar('m');
-    rxChar('1');
-    rxChar('8');
-	rxChar('5');
-    rxChar('!');
-    TEST_ASSERT_EQUAL(-2, cmdProcessor());
 }
 
 void test_valid_command_R(void) {
@@ -117,7 +103,7 @@ void test_invalid_command_R(void) {
     rxChar('0');
     rxChar('2');
     rxChar('!');
-    TEST_ASSERT_EQUAL(-4, cmdProcessor());
+    TEST_ASSERT_EQUAL(-1, cmdProcessor());
 }
 
 void test_checksum_calculation(void) {
@@ -127,7 +113,7 @@ void test_checksum_calculation(void) {
 }
 
 void test_tx_buffer_output(void) {
-	unsigned char buffer[10];
+	unsigned char buffer[10] = {0};
 	int len;
 	txChar('H');
 	txChar('e');
@@ -135,7 +121,84 @@ void test_tx_buffer_output(void) {
 	txChar('l');
 	txChar('o');
 	getTxBuffer(buffer, &len);
-	TEST_ASSERT_NOT_EQUAL(0, len);
+	TEST_ASSERT_EQUAL(0, strcmp(buffer,"Hello"));
+	TEST_ASSERT_EQUAL(5, len);
+}
+
+void test_call_cmd_in_the_middle_of_command(void) {
+	rxChar('#');
+	rxChar('R');
+	rxChar('0');
+	TEST_ASSERT_EQUAL(-1, cmdProcessor());
+	rxChar('8');
+	rxChar('2');
+	rxChar('!');
+	TEST_ASSERT_EQUAL(0, cmdProcessor());
+
+	rxChar('#');
+	rxChar('R');
+	rxChar('0');
+	rxChar('!');
+	TEST_ASSERT_EQUAL(-1, cmdProcessor());
+	rxChar('#');
+	rxChar('R');
+	rxChar('0');
+	rxChar('8');
+	rxChar('2');
+	rxChar('!');
+	TEST_ASSERT_EQUAL(0, cmdProcessor());
+
+	rxChar('#');
+	rxChar('R');
+	rxChar('0');
+	TEST_ASSERT_EQUAL(-1, cmdProcessor());
+	rxChar('#');
+	rxChar('R');
+	rxChar('0');
+	TEST_ASSERT_EQUAL(-1, cmdProcessor());
+	rxChar('#');
+	rxChar('R');
+	rxChar('0');
+	rxChar('8');
+	rxChar('2');
+	rxChar('!');
+	TEST_ASSERT_EQUAL(0, cmdProcessor());
+
+	rxChar('#');
+	rxChar('R');
+	rxChar('0');
+	TEST_ASSERT_EQUAL(-1, cmdProcessor());
+	rxChar('#');
+	rxChar('R');
+	rxChar('0');
+	rxChar('!');
+	rxChar('!');
+	rxChar('!');
+	TEST_ASSERT_EQUAL(-1, cmdProcessor());
+	rxChar('#');
+	rxChar('R');
+	rxChar('0');
+	rxChar('8');
+	rxChar('2');
+	rxChar('!');
+	TEST_ASSERT_EQUAL(0, cmdProcessor());
+
+	rxChar('#');
+	rxChar('R');
+	rxChar('0');
+	rxChar('8');
+	rxChar('2');
+	TEST_ASSERT_EQUAL(-1, cmdProcessor());
+	rxChar('!');
+	rxChar('#');
+	rxChar('R');
+	rxChar('0');
+	rxChar('8');
+	rxChar('2');
+	rxChar('!');
+	TEST_ASSERT_EQUAL(0, cmdProcessor());
+	TEST_ASSERT_EQUAL(0, cmdProcessor());
+	TEST_ASSERT_EQUAL(-1, cmdProcessor());
 }
 
 int main(void) {
@@ -149,11 +212,11 @@ int main(void) {
 	RUN_TEST(test_missing_start_symbol);
 	RUN_TEST(test_missing_end_symbol);
 	RUN_TEST(test_valid_command_L);
-	RUN_TEST(test_invalid_command_L);
 	RUN_TEST(test_valid_command_R);
 	RUN_TEST(test_invalid_command_R);
 	RUN_TEST(test_checksum_calculation);
 	RUN_TEST(test_tx_buffer_output);
+	RUN_TEST(test_call_cmd_in_the_middle_of_command);
 	
 	return UNITY_END();
 }

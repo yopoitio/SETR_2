@@ -15,6 +15,12 @@
 #ifndef CMD_PROC_H_
 #define CMD_PROC_H_
 
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include <stdbool.h>
+#include "../SENSORS/sensors.h"
+
 /* Some defines */
 /* Other defines should be return codes of the functions */
 /* E.g. #define CMD_EMPTY_STRING -1                      */
@@ -59,6 +65,11 @@ int txChar(unsigned char car);
 /* ************************* */
 void resetRxBuffer(void);
 
+/* ****************************** */
+/* Resets the RX buffer partially */  
+/* ****************************** */
+void resetRxBufferCommand(int begin, int end);
+
 /* ************************* */
 /* Resets the TX buffer		 */  
 /* ************************* */
@@ -72,6 +83,6 @@ void getTxBuffer(unsigned char * buf, int * len);
 /* ************************************************ */
 /* Computes the checksum of a given number of chars */
 /* ************************************************ */ 
-int calcChecksum(unsigned char * buf, int nbytes);
+uint8_t calcChecksum(unsigned char * buf, int nbytes);
 
 #endif

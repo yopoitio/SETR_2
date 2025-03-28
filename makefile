@@ -56,13 +56,13 @@ all: clean test main
 .PHONY: clean
 
 test: $(TEST_FILES)
-	$(C_COMPILER) $(CFLAGS) $(INC_DIRS) $(TEST_FILES) -o $(TEST_EXEC) -lm
+	$(C_COMPILER) $(CFLAGS) $(INC_DIRS) $(TEST_FILES) -o $(TEST_EXEC)
 
 main: $(MAIN_FILES)
-	$(C_COMPILER) $(CFLAGS) $(INC_DIRS) $(MAIN_FILES) -o $(MAIN_EXEC) -lm
+	$(C_COMPILER) $(CFLAGS) $(INC_DIRS) $(MAIN_FILES) -o $(MAIN_EXEC)
 
 clean:
-	$(CLEANUP) $(TARGET) $(MAIN_EXEC)
+	$(CLEANUP) $(TARGET) $(MAIN_EXEC) $(TEST_EXEC)
 	
 
 

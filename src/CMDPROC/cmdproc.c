@@ -1,13 +1,8 @@
 /* ****************************** */
 /* See cmdProc.h for indications  */
 /* ****************************** */
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
-#include <math.h>
-
 #include "cmdproc.h"
-#include "../SENSORS/sensors.h"
+
 
 /* Internal variables */
 /* Used as part of the UART emulation */
@@ -25,49 +20,126 @@ static unsigned char txBufLen = 0;
  */ 
 int cmdProcessor(void)
 {
-	int i;
+	bool SOF_found = false;
+	int begin, end, sof_count = 0, eof_count = 0;
 	unsigned char sid;
-	int checksum_calculated = 0;
-	int checksum_received = 0;
+	uint8_t checksum_calculated = 0;
+	uint8_t checksum_received = 0;
 		
 	/* Detect empty cmd string */
-	if(rxBufLen == 0)
+	if(rxBufLen == 0) {
 		return -1; 
+	}
 	
 	/* Find index of SOF */
-	for(i=0; i < rxBufLen; i++) {
-		if(UARTRxBuffer[i] == SOF_SYM) {
+	for(begin=0; begin < rxBufLen; begin++) {
+		if(UARTRxBuffer[begin] == SOF_SYM) {
+			SOF_found = true;
 			break;
 		}
 	}
+
+	/* Find index of EOF */
+	for(end = begin; end < rxBufLen; end++) {
+		if(UARTRxBuffer[end] == EOF_SYM) {
+			break;
+		}
+	}
+
+	for(int i = begin; i < rxBufLen; i++) {
+		if(UARTRxBuffer[i] == SOF_SYM) {
+			sof_count++;
+		}
+		else if (UARTRxBuffer[i] == EOF_SYM){
+			eof_count++;
+		}
+	}
+
+	if(sof_count>eof_count) {
+		/* Find index of SOF */
+		for(int new_begin = begin+1; new_begin < rxBufLen; new_begin++) {
+			if(UARTRxBuffer[new_begin] == SOF_SYM) {
+				if(end>new_begin) {
+					resetRxBufferCommand(begin,new_begin-1);
+					begin = new_begin;
+				}
+				break;
+			}
+		}
+	}
+	else if(sof_count<eof_count) {
+		/* Find index of EOF */
+		for(int new_end = end; new_end < rxBufLen; new_end++) {
+			if(UARTRxBuffer[new_end] == EOF_SYM) {
+				if(begin>end) {
+					resetRxBufferCommand(0,end);
+					end = new_end;
+				}
+				break;
+			}
+		}
+	}	
 	
 	/* If a SOF was found look for commands */
-	if(i < rxBufLen) {
-		
-		switch(UARTRxBuffer[i+1]) { 
+	if(end < rxBufLen) {
+		switch(UARTRxBuffer[begin+1]) { 
+			case 'A':
+				/* Check for complete command*/
+				if(end-begin+1 != 6) {
+					resetRxBufferCommand(begin,end);
+					return -1;
+				}
+
+				/* Check checksum */
+				for(int k = end-3; k<end; k++) {
+					if(UARTRxBuffer[k] < '0' || UARTRxBuffer[k] > '9') {
+						resetRxBufferCommand(begin,end);
+						return -4;
+					}
+				}
+				checksum_calculated = calcChecksum(&UARTRxBuffer[begin+1], 1);
+				checksum_received = 100*(UARTRxBuffer[begin+2] - '0') + 10*(UARTRxBuffer[begin+3] - '0') + (UARTRxBuffer[begin+4] - '0');
+				if (checksum_calculated != checksum_received) {
+					resetRxBufferCommand(begin,end);
+					return -3;
+				}
+
+				resetRxBufferCommand(begin,end);
+				return 0;
 			
 			case 'P':		
 				/* Command "P" detected.							*/
 				/* Follows one DATA byte that specifies the sensor	*/ 
 				/* to read. I assume 't','h','c' for temp., humid. 	*/
 				/* and CO2, resp.									*/   
+
+				/* Check for complete command*/
+				if(end-begin+1 != 7) {
+					resetRxBufferCommand(begin,end);
+					return -1;
+				}
 		
 				/* Check sensor type */
-				sid = UARTRxBuffer[i+2];
-				if(sid != 't' && sid != 'h' && sid != 'c') return -2;
+				sid = UARTRxBuffer[begin+2];
+				if(sid != 't' && sid != 'h' && sid != 'c') {
+					resetRxBufferCommand(begin,end);
+					return -2;
+				}
 				
 				/* Check checksum */
-				checksum_calculated = calcChecksum(&(UARTRxBuffer[i+1]),2);
-				checksum_received = 0;
-
-				for (int i = 3; i <= 5; i++) {
-					checksum_received += (int)(UARTRxBuffer[i]-48)*pow(10,5-i);
+				for(int k = end-3; k<end; k++) {
+					if(UARTRxBuffer[k] < '0' || UARTRxBuffer[k] > '9') {
+						resetRxBufferCommand(begin,end);
+						return -4;
+					}
 				}
-			
-				if(checksum_calculated%255 != checksum_received) return -3;
-				
-				/* Check EOF */
-				if(UARTRxBuffer[i+6] != EOF_SYM) return -4;
+				checksum_calculated = calcChecksum(&UARTRxBuffer[begin+1], 2);
+				checksum_received = 100*(UARTRxBuffer[begin+3] - '0') + 10*(UARTRxBuffer[begin+4] - '0') + (UARTRxBuffer[begin+5] - '0');
+				if(checksum_calculated != checksum_received) {
+					resetRxBufferCommand(begin,end);
+					return -3;
+				}
+
 			
 				/* Command is (is it? ... ) valid. Produce answer and terminate */ 
 				// txChar('#');
@@ -81,78 +153,78 @@ int cmdProcessor(void)
 				// txChar('4'); /*   the checksum for any command 				*/  
 				// txChar('!');
 
-				/* Here you should remove the characters that are part of the 		*/
-				/* command from the RX buffer. I'm just resetting it, which is not 	*/
-				/* a good solution, as a new command could be in progress and		*/
-				/* resetting  will generate errors									*/
-				resetRxBuffer();
+				resetRxBufferCommand(begin,end);
 				return 0;
 
-			case 'A':
-				if(UARTRxBuffer[rxBufLen-1] != EOF_SYM) return -1;
-				if(rxBufLen != i+6) return -4;
-
-				for(int j = i+2; j < rxBufLen; j++) {
-					if((j == rxBufLen-1 && UARTRxBuffer[j] != EOF_SYM) || (j != rxBufLen-1 && (UARTRxBuffer[j] < '0' || UARTRxBuffer[j] > '9'))) {
-						return -2;
-					}
-				}
-				checksum_calculated = calcChecksum(&UARTRxBuffer[i+1], 1);
-				checksum_received = 100*(UARTRxBuffer[i+2] - '0') + 10*(UARTRxBuffer[i+3] - '0') + (UARTRxBuffer[i+4] - '0');
-				if (checksum_calculated != checksum_received) { // VER O %255 AQUI
-					return -3;
-                }
-				return 0;
 			case 'L':
-				if(UARTRxBuffer[rxBufLen-1] != EOF_SYM) return -1;
-				if(rxBufLen != i+7) return -4;
+				/* Check for complete command*/
+				if(end-begin+1 != 6) {
+					resetRxBufferCommand(begin,end);
+					return -1;
+				}
 
-				sid = UARTRxBuffer[i+2];
-				if(sid != 't' && sid != 'h' && sid != 'c') return -2;
-
-				for(int j = i+3; j < rxBufLen; j++) {
-					if((j == rxBufLen-1 && UARTRxBuffer[j] != EOF_SYM) || (j != rxBufLen-1 && (UARTRxBuffer[j] < '0' || UARTRxBuffer[j] > '9'))) {
-						return -2;
+				/* Check checksum */
+				for(int k = end-3; k<end; k++) {
+					if(UARTRxBuffer[k] < '0' || UARTRxBuffer[k] > '9') {
+						resetRxBufferCommand(begin,end);
+						return -4;
 					}
 				}
-				checksum_calculated = calcChecksum(&UARTRxBuffer[i+1], 2);
-				checksum_received = 100*(UARTRxBuffer[i+3] - '0') + 10*(UARTRxBuffer[i+4] - '0') + (UARTRxBuffer[i+5] - '0');
-				if (checksum_calculated != checksum_received) { // VER O %255 AQUI
+				checksum_calculated = calcChecksum(&UARTRxBuffer[begin+1], 1);
+				checksum_received = 100*(UARTRxBuffer[begin+2] - '0') + 10*(UARTRxBuffer[begin+3] - '0') + (UARTRxBuffer[begin+4] - '0');
+				if (checksum_calculated != checksum_received) {
+					resetRxBufferCommand(begin,end);
 					return -3;
 				}
+
 				return 0;
+
 			case 'R':
-				if(UARTRxBuffer[rxBufLen-1] != EOF_SYM) return -1;
-				if(rxBufLen != i+6) return -4;
+				/* Check for complete command*/
+				if(end-begin+1 != 6) {
+					resetRxBufferCommand(begin,end);
+					return -1;
+				}
 
-				for(int j = i+2; j < rxBufLen; j++) {
-					if((j == rxBufLen-1 && UARTRxBuffer[j] != EOF_SYM) || (j != rxBufLen-1 && (UARTRxBuffer[j] < '0' || UARTRxBuffer[j] > '9'))) {
-						return -2;
+				/* Check checksum */
+				for(int k = end-3; k<end; k++) {
+					if(UARTRxBuffer[k] < '0' || UARTRxBuffer[k] > '9') {
+						resetRxBufferCommand(begin,end);
+						return -4;
 					}
 				}
-				checksum_calculated = calcChecksum(&UARTRxBuffer[i+1], 1);
-				checksum_received = 100*(UARTRxBuffer[i+2] - '0') + 10*(UARTRxBuffer[i+3] - '0') + (UARTRxBuffer[i+4] - '0');
-				if (checksum_calculated != checksum_received) { // VER O %255 AQUI
+				checksum_calculated = calcChecksum(&UARTRxBuffer[begin+1], 1);
+				checksum_received = 100*(UARTRxBuffer[begin+2] - '0') + 10*(UARTRxBuffer[begin+3] - '0') + (UARTRxBuffer[begin+4] - '0');
+				if (checksum_calculated != checksum_received) {
+					resetRxBufferCommand(begin,end);
 					return -3;
 				}
+
+				resetRxBufferCommand(begin,end);
 				return 0;
+
 			default:
 				/* If code reaches this place, the command is not recognized */
+				resetRxBufferCommand(begin,end);
 				return -2;				
 		}
 		
 		
 	}
+
+	if(!SOF_found) {
+		resetRxBuffer();
+	}
 	
-	/* Cmd string not null and SOF not found */
-	return -4;
+	/* Cmd string not null and SOF or EOF not found */
+	return -1;
 
 }
 
 /* 
  * calcChecksum
  */ 
-int calcChecksum(unsigned char * buf, int nbytes) {
+uint8_t calcChecksum(unsigned char * buf, int nbytes) {
 	/* Here you are supposed to compute the modulo 256 checksum */
 	/* of the first n bytes of buf. Then you should convert the */
 	/* checksum to ascii (3 digitas/chars) and compare each one */
@@ -207,8 +279,23 @@ int txChar(unsigned char car)
 void resetRxBuffer(void)
 {
 	memset(UARTRxBuffer, 0, UART_RX_SIZE);
-	rxBufLen = 0;		
-	return;
+	rxBufLen = 0;
+}
+
+/*
+ * resetRxBuffer
+ */
+void resetRxBufferCommand(int begin, int end)
+{
+	for(;begin <= end;begin++) {
+		UARTRxBuffer[begin] = 0;
+	}
+	for(int i=0;i<UART_RX_SIZE;i++) {
+		if(UARTRxBuffer[begin] != 0) {
+			return;
+		}
+	}
+	rxBufLen = 0;
 }
 
 /*
@@ -217,8 +304,7 @@ void resetRxBuffer(void)
 void resetTxBuffer(void)
 {
 	memset(UARTTxBuffer, 0, UART_TX_SIZE);
-	txBufLen = 0;		
-	return;
+	txBufLen = 0;
 }
 
 /*
@@ -229,8 +315,7 @@ void getTxBuffer(unsigned char * buf, int * len)
 	*len = txBufLen;
 	if(txBufLen > 0) {
 		memcpy(buf,UARTTxBuffer,*len);
-	}		
-	return;
+	}
 }
 
 
