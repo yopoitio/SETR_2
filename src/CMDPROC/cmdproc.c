@@ -27,6 +27,8 @@ int cmdProcessor(void)
 {
 	int i;
 	unsigned char sid;
+	int checksum_calculated = 0;
+	int checksum_received = 0;
 		
 	/* Detect empty cmd string */
 	if(rxBufLen == 0)
@@ -52,45 +54,38 @@ int cmdProcessor(void)
 		
 				/* Check sensor type */
 				sid = UARTRxBuffer[i+2];
-				if(sid != 't' && sid != 'h' && sid != 'c') {
-					return -2;
-				}
+				if(sid != 't' && sid != 'h' && sid != 'c') return -2;
 				
 				/* Check checksum */
-				int checksum_calculated = calcChecksum(&(UARTRxBuffer[i+1]),2);
-				int checksum_received = 0;
+				checksum_calculated = calcChecksum(&(UARTRxBuffer[i+1]),2);
+				checksum_received = 0;
 
 				for (int i = 3; i <= 5; i++) {
 					checksum_received += (int)(UARTRxBuffer[i]-48)*pow(10,5-i);
 				}
 			
-				if(checksum_calculated%255 != checksum_received) {
-					return -3;
-				}
+				if(checksum_calculated%255 != checksum_received) return -3;
 				
 				/* Check EOF */
-				if(UARTRxBuffer[i+6] != EOF_SYM) {
-					return -4;
-				}
+				if(UARTRxBuffer[i+6] != EOF_SYM) return -4;
 			
 				/* Command is (is it? ... ) valid. Produce answer and terminate */ 
-				txChar('#');
-				txChar('p'); /* p is the reply to P 							*/	
-				txChar('t'); /* t indicate that it is a temperature 			*/
-				txChar('+'); /* This is the sensor reading. You should call a 	*/
-				txChar('2'); /*   function that emulates the reading of a 		*/
-				txChar('1'); /*   sensor value 	*/
-				txChar('1'); /* Checksum is 114 decimal in this case		*/
-				txChar('1'); /*   You should call a funcion that computes 	*/
-				txChar('4'); /*   the checksum for any command 				*/  
-				txChar('!');
-				
+				// txChar('#');
+				// txChar('p'); /* p is the reply to P 							*/	
+				// txChar('t'); /* t indicate that it is a temperature 			*/
+				// txChar('+'); /* This is the sensor reading. You should call a 	*/
+				// txChar('2'); /*   function that emulates the reading of a 		*/
+				// txChar('1'); /*   sensor value 	*/
+				// txChar('1'); /* Checksum is 114 decimal in this case		*/
+				// txChar('1'); /*   You should call a funcion that computes 	*/
+				// txChar('4'); /*   the checksum for any command 				*/  
+				// txChar('!');
+
 				/* Here you should remove the characters that are part of the 		*/
 				/* command from the RX buffer. I'm just resetting it, which is not 	*/
 				/* a good solution, as a new command could be in progress and		*/
 				/* resetting  will generate errors									*/
-				rxBufLen = 0;
-				
+				resetRxBuffer();
 				return 0;
 
 			case 'A':
@@ -211,6 +206,7 @@ int txChar(unsigned char car)
  */
 void resetRxBuffer(void)
 {
+	memset(UARTRxBuffer, 0, UART_RX_SIZE);
 	rxBufLen = 0;		
 	return;
 }
@@ -220,6 +216,7 @@ void resetRxBuffer(void)
  */
 void resetTxBuffer(void)
 {
+	memset(UARTTxBuffer, 0, UART_TX_SIZE);
 	txBufLen = 0;		
 	return;
 }
