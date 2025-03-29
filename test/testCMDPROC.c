@@ -121,7 +121,7 @@ void test_tx_buffer_output(void) {
 	txChar('l');
 	txChar('o');
 	getTxBuffer(buffer, &len);
-	TEST_ASSERT_EQUAL(0, strcmp(buffer,"Hello"));
+	TEST_ASSERT_EQUAL(0, strcmp((char*)buffer,"Hello"));
 	TEST_ASSERT_EQUAL(5, len);
 }
 
@@ -201,6 +201,69 @@ void test_call_cmd_in_the_middle_of_command(void) {
 	TEST_ASSERT_EQUAL(-1, cmdProcessor());
 }
 
+void test_temp_sensor(void) {
+	int returns;
+	int history[20] = {__INT_MAX__};
+	int history_confirm[20] = {-46, 34, -50, 2, -19, 21, -42, 7, -14, 40, -3, 58, 11, -27, 45, 0, 33, -22, 49, -35};
+
+	returns = simulate_temp_sensor('A',NULL);
+	TEST_ASSERT_EQUAL(-10, returns);
+	returns = simulate_temp_sensor('P',NULL);
+	TEST_ASSERT_EQUAL(23, returns);
+
+	returns = simulate_temp_sensor('R',NULL);
+	for(int i = 0; i < 25;i++) {
+		simulate_temp_sensor('P',NULL);
+	}
+
+	simulate_temp_sensor('L',history);
+	for(int i=0;i<20;i++) {
+		TEST_ASSERT_EQUAL(history_confirm[i], history[i]);
+	}
+}
+
+void test_hum_sensor(void) {
+	int returns;
+	int history[20] = {__INT_MAX__};
+	int history_confirm[20] = {15, 0, 68, 77, 36, 53, 9, 22, 60, 45, 100, 31, 82, 99, 3, 48, 73, 11, 67, 25};
+
+	returns = simulate_hum_sensor('A',NULL);
+	TEST_ASSERT_EQUAL(34, returns);
+	returns = simulate_hum_sensor('P',NULL);
+	TEST_ASSERT_EQUAL(89, returns);
+
+	returns = simulate_hum_sensor('R',NULL);
+	for(int i = 0; i < 25;i++) {
+		simulate_hum_sensor('P',NULL);
+	}
+
+	simulate_hum_sensor('L',history);
+	for(int i=0;i<20;i++) {
+		TEST_ASSERT_EQUAL(history_confirm[i], history[i]);
+	}
+}
+
+void test_co2_sensor(void) {
+	int returns;
+	int history[20] = {__INT_MAX__};
+	int history_confirm[20] = {13579, 5678, 15234, 400, 987, 16000, 1987, 13456, 765, 17000, 5432, 18765, 12004, 9876, 14235, 6789, 14987, 4321, 8765, 2345};
+
+	returns = simulate_co2_sensor('A',NULL);
+	TEST_ASSERT_EQUAL(18457, returns);
+	returns = simulate_co2_sensor('P',NULL);
+	TEST_ASSERT_EQUAL(1203, returns);
+
+	returns = simulate_co2_sensor('R',NULL);
+	for(int i = 0; i < 25;i++) {
+		simulate_co2_sensor('P',NULL);
+	}
+
+	simulate_co2_sensor('L',history);
+	for(int i=0;i<20;i++) {
+		TEST_ASSERT_EQUAL(history_confirm[i], history[i]);
+	}
+}
+
 void test_warning_during_return1(void) {
 	unsigned char buffer[UART_TX_SIZE - 10] = {0};
 	unsigned char bufferExpected[UART_TX_SIZE] = {0};
@@ -277,6 +340,9 @@ int main(void) {
 	RUN_TEST(test_checksum_calculation);
 	RUN_TEST(test_tx_buffer_output);
 	RUN_TEST(test_call_cmd_in_the_middle_of_command);
+	RUN_TEST(test_temp_sensor);
+	RUN_TEST(test_hum_sensor);
+	RUN_TEST(test_co2_sensor);
 	RUN_TEST(test_warning_during_return1);
 	RUN_TEST(test_error_during_return2);
 	RUN_TEST(test_error_during_return3);

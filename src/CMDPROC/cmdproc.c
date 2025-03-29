@@ -186,6 +186,32 @@ int cmdProcessor(void)
 					sendWarningErrorResponse(-3);
 					return -3;
 				}
+				int temp_hist[20];
+				int hum_hist[20];
+				int co2_hist[20];
+
+				simulate_temp_sensor(UARTRxBuffer[begin+1],temp_hist);
+				simulate_hum_sensor(UARTRxBuffer[begin+1],hum_hist);
+				simulate_co2_sensor(UARTRxBuffer[begin+1],co2_hist);
+
+				char buffer[20];
+				int size;
+
+				txChar('#');
+				txChar('L');
+				for(int i = 0; i < 20; i++) {
+					if(temp_hist[i]>=0) {
+						sprintf(buffer,"%d",temp_hist[i]);
+						printf("--------------------------%d\n",temp_hist[i]);
+						/*txChar('+');
+						txChar(itoa(temp_hist[i]/100));
+						txChar('+');
+						txChar('+');*/
+					}
+					else {
+						txChar('-');
+					}
+				}
 
 				return 0;
 
@@ -212,6 +238,10 @@ int cmdProcessor(void)
 					sendWarningErrorResponse(-3);
 					return -3;
 				}
+
+				simulate_temp_sensor(UARTRxBuffer[begin+1],NULL);
+				simulate_hum_sensor(UARTRxBuffer[begin+1],NULL);
+				simulate_co2_sensor(UARTRxBuffer[begin+1],NULL);
 
 				resetRxBufferCommand(begin,end);
 				return 0;
@@ -400,5 +430,3 @@ void getTxBuffer(unsigned char * buf, int * len)
 		memcpy(buf,UARTTxBuffer,*len);
 	}
 }
-
-
