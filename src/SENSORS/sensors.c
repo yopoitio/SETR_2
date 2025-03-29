@@ -4,9 +4,9 @@ int temp_values[SAMPLES] = {-10, 23, -12, 5, -7, 60, 18, -35, 49, -22, 33, 0, 45
 int hum_values[SAMPLES] = {34, 89, 7, 41, 56, 18, 92, 25, 67, 11, 73, 48, 3, 99, 82, 31, 100, 45, 60, 22, 9, 53, 36, 77, 68, 0, 15, 97, 79, 27, 90, 13, 58, 47, 100, 71, 5, 85, 30, 61, 95, 12, 33, 20, 63, 54, 4, 87, 26, 50};
 int co2_values[SAMPLES] = {18457, 1203, 7654, 19876, 5234, 10987, 15789, 2345, 8765, 4321, 14987, 6789, 14235, 9876, 12004, 18765, 5432, 17000, 765, 13456, 1987, 16000, 987, 400, 15234, 5678, 13579, 18999, 4500, 7999, 19999, 17789, 10234, 6000, 8450, 14321, 20000, 15999, 11234, 12876, 17543, 14000, 7800, 18987, 9400, 15678, 4900, 16345, 19345, 8888};
 
-int temp_history[HISTORY] = {0};
-int hum_history[HISTORY] = {0};
-int co2_history[HISTORY] = {0};
+int temp_history[HISTORY] = {__INT_MAX__};
+int hum_history[HISTORY] = {__INT_MAX__};
+int co2_history[HISTORY] = {__INT_MAX__};
 
 int v_temp = 0, v_hum = 0, v_co2 = 0;
 int h_temp = 0, h_hum = 0, h_co2 = 0;
@@ -34,9 +34,9 @@ int simulate_temp_sensor(char action, int history[]){
             }
             return 0;
 
-        case 'H':
+        case 'R':
             for(int i=0;i<HISTORY;i++) {
-                temp_history[i] = 0;
+                temp_history[i] = __INT_MAX__;
             }
             h_temp = 0;
             return 0;
@@ -70,9 +70,9 @@ int simulate_hum_sensor(char action, int history[]){
             }
             return 0;
 
-        case 'H':
+        case 'R':
             for(int i=0;i<HISTORY;i++) {
-                hum_history[i] = 0;
+                hum_history[i] = __INT_MAX__;
             }
             h_hum = 0;
             return 0;
@@ -106,9 +106,9 @@ int simulate_co2_sensor(char action, int history[]){
             }
             return 0;
 
-        case 'H':
+        case 'R':
             for(int i=0;i<HISTORY;i++) {
-                co2_history[i] = 0;
+                co2_history[i] = __INT_MAX__;
             }
             h_co2 = 0;
             return 0;

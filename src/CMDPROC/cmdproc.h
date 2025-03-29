@@ -16,6 +16,7 @@
 #define CMD_PROC_H_
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
