@@ -24,8 +24,8 @@
 /* Some defines */
 /* Other defines should be return codes of the functions */
 /* E.g. #define CMD_EMPTY_STRING -1                      */
-#define UART_RX_SIZE 20 	/* Maximum size of the RX buffer */ 
-#define UART_TX_SIZE 20 	/* Maximum size of the TX buffer */ 
+#define UART_RX_SIZE 500 	/* Maximum size of the RX buffer */ 
+#define UART_TX_SIZE 500 	/* Maximum size of the TX buffer */ 
 #define SOF_SYM '#'	        /* Start of Frame Symbol */
 #define EOF_SYM '!'          /* End of Frame Symbol */
 
@@ -84,5 +84,10 @@ void getTxBuffer(unsigned char * buf, int * len);
 /* Computes the checksum of a given number of chars */
 /* ************************************************ */ 
 uint8_t calcChecksum(unsigned char * buf, int nbytes);
+
+/* ************************************************ */
+/* Computes a warning/error response to returns     */
+/* ************************************************ */ 
+void sendWarningErrorResponse(int error_code);
 
 #endif

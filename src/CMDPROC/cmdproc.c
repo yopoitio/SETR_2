@@ -7,10 +7,10 @@
 /* Internal variables */
 /* Used as part of the UART emulation */
 static unsigned char UARTRxBuffer[UART_RX_SIZE];
-static unsigned char rxBufLen = 0; 
+static uint16_t rxBufLen = 0; 
 
 static unsigned char UARTTxBuffer[UART_TX_SIZE];
-static unsigned char txBufLen = 0; 
+static uint16_t txBufLen = 0; 
 
  
 /* Function implementation */
@@ -28,6 +28,7 @@ int cmdProcessor(void)
 		
 	/* Detect empty cmd string */
 	if(rxBufLen == 0) {
+		sendWarningErrorResponse(-1);
 		return -1; 
 	}
 	
@@ -87,6 +88,7 @@ int cmdProcessor(void)
 				/* Check for complete command*/
 				if(end-begin+1 != 6) {
 					resetRxBufferCommand(begin,end);
+					sendWarningErrorResponse(-2);
 					return -1;
 				}
 
@@ -94,6 +96,7 @@ int cmdProcessor(void)
 				for(int k = end-3; k<end; k++) {
 					if(UARTRxBuffer[k] < '0' || UARTRxBuffer[k] > '9') {
 						resetRxBufferCommand(begin,end);
+						sendWarningErrorResponse(-4);
 						return -4;
 					}
 				}
@@ -101,6 +104,7 @@ int cmdProcessor(void)
 				checksum_received = 100*(UARTRxBuffer[begin+2] - '0') + 10*(UARTRxBuffer[begin+3] - '0') + (UARTRxBuffer[begin+4] - '0');
 				if (checksum_calculated != checksum_received) {
 					resetRxBufferCommand(begin,end);
+					sendWarningErrorResponse(-3);
 					return -3;
 				}
 
@@ -123,6 +127,7 @@ int cmdProcessor(void)
 				sid = UARTRxBuffer[begin+2];
 				if(sid != 't' && sid != 'h' && sid != 'c') {
 					resetRxBufferCommand(begin,end);
+					sendWarningErrorResponse(-2);
 					return -2;
 				}
 				
@@ -130,6 +135,7 @@ int cmdProcessor(void)
 				for(int k = end-3; k<end; k++) {
 					if(UARTRxBuffer[k] < '0' || UARTRxBuffer[k] > '9') {
 						resetRxBufferCommand(begin,end);
+						sendWarningErrorResponse(-4);
 						return -4;
 					}
 				}
@@ -137,6 +143,7 @@ int cmdProcessor(void)
 				checksum_received = 100*(UARTRxBuffer[begin+3] - '0') + 10*(UARTRxBuffer[begin+4] - '0') + (UARTRxBuffer[begin+5] - '0');
 				if(checksum_calculated != checksum_received) {
 					resetRxBufferCommand(begin,end);
+					sendWarningErrorResponse(-3);
 					return -3;
 				}
 
@@ -160,6 +167,7 @@ int cmdProcessor(void)
 				/* Check for complete command*/
 				if(end-begin+1 != 6) {
 					resetRxBufferCommand(begin,end);
+					sendWarningErrorResponse(-1);
 					return -1;
 				}
 
@@ -167,6 +175,7 @@ int cmdProcessor(void)
 				for(int k = end-3; k<end; k++) {
 					if(UARTRxBuffer[k] < '0' || UARTRxBuffer[k] > '9') {
 						resetRxBufferCommand(begin,end);
+						sendWarningErrorResponse(-4);
 						return -4;
 					}
 				}
@@ -174,6 +183,7 @@ int cmdProcessor(void)
 				checksum_received = 100*(UARTRxBuffer[begin+2] - '0') + 10*(UARTRxBuffer[begin+3] - '0') + (UARTRxBuffer[begin+4] - '0');
 				if (checksum_calculated != checksum_received) {
 					resetRxBufferCommand(begin,end);
+					sendWarningErrorResponse(-3);
 					return -3;
 				}
 
@@ -183,6 +193,7 @@ int cmdProcessor(void)
 				/* Check for complete command*/
 				if(end-begin+1 != 6) {
 					resetRxBufferCommand(begin,end);
+					sendWarningErrorResponse(-1);
 					return -1;
 				}
 
@@ -190,6 +201,7 @@ int cmdProcessor(void)
 				for(int k = end-3; k<end; k++) {
 					if(UARTRxBuffer[k] < '0' || UARTRxBuffer[k] > '9') {
 						resetRxBufferCommand(begin,end);
+						sendWarningErrorResponse(-4);
 						return -4;
 					}
 				}
@@ -197,6 +209,7 @@ int cmdProcessor(void)
 				checksum_received = 100*(UARTRxBuffer[begin+2] - '0') + 10*(UARTRxBuffer[begin+3] - '0') + (UARTRxBuffer[begin+4] - '0');
 				if (checksum_calculated != checksum_received) {
 					resetRxBufferCommand(begin,end);
+					sendWarningErrorResponse(-3);
 					return -3;
 				}
 
@@ -206,6 +219,7 @@ int cmdProcessor(void)
 			default:
 				/* If code reaches this place, the command is not recognized */
 				resetRxBufferCommand(begin,end);
+				sendWarningErrorResponse(-2);
 				return -2;				
 		}
 		
@@ -217,6 +231,7 @@ int cmdProcessor(void)
 	}
 	
 	/* Cmd string not null and SOF or EOF not found */
+	sendWarningErrorResponse(-1);
 	return -1;
 
 }
@@ -241,6 +256,74 @@ uint8_t calcChecksum(unsigned char * buf, int nbytes) {
 	}
 
 	return checksum;
+}
+
+
+/*
+ * sendWarningErrorResponse
+ */
+void sendWarningErrorResponse(int error_code) {
+	resetTxBuffer();
+	unsigned char message[UART_TX_SIZE - 10] = {0};
+	unsigned char formattedMessage[UART_TX_SIZE] = {0};
+	uint8_t checksum;
+	switch (error_code) {
+		case -1:
+			strcpy((char *)message,"empty string or incomplete commmand");
+			checksum = calcChecksum(message, strlen((const char*)message));
+
+			txChar(SOF_SYM);
+		    snprintf((char *)formattedMessage, sizeof(formattedMessage), "W%s%03d", message, checksum);
+			for(size_t i = 0; i < strlen((const char*)formattedMessage); i++) {
+				if (formattedMessage[i] != '\0') {
+					txChar(formattedMessage[i]);
+				}
+            }
+			txChar(EOF_SYM);
+			break;
+		case -2:
+			strcpy((char *)message,"invalid command was found");
+			checksum = calcChecksum(message, strlen((const char*)message));
+
+			txChar(SOF_SYM);
+		    snprintf((char *)formattedMessage, sizeof(formattedMessage), "E%s%03d", message, checksum);
+			for(size_t i = 0; i < strlen((const char*)formattedMessage); i++) {
+				if (formattedMessage[i] != '\0') {
+					txChar(formattedMessage[i]);
+				}
+            }
+			txChar(EOF_SYM);
+			break;
+		case -3:
+			strcpy((char *)message,"checksum error was detected");
+			checksum = calcChecksum(message, strlen((const char*)message));
+
+			txChar(SOF_SYM);
+		    snprintf((char *)formattedMessage, sizeof(formattedMessage), "E%s%03d", message, checksum);
+			for(size_t i = 0; i < strlen((const char*)formattedMessage); i++) {
+				if (formattedMessage[i] != '\0') {
+					txChar(formattedMessage[i]);
+				}
+            }
+			txChar(EOF_SYM);
+			break;
+		case -4:
+			strcpy((char *)message,"string format is wrong");
+			checksum = calcChecksum(message, strlen((const char*)message));
+
+			txChar(SOF_SYM);
+			snprintf((char *)formattedMessage, sizeof(formattedMessage), "E%s%03d", message, checksum);
+			for(size_t i = 0; i < strlen((const char*)formattedMessage); i++) {
+				if (formattedMessage[i] != '\0') {
+					txChar(formattedMessage[i]);
+				}
+			}
+			txChar(EOF_SYM);
+			break;
+		
+		default:
+			break;
+	}
 }
 
 /*

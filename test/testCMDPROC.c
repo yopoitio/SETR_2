@@ -201,6 +201,66 @@ void test_call_cmd_in_the_middle_of_command(void) {
 	TEST_ASSERT_EQUAL(-1, cmdProcessor());
 }
 
+void test_warning_during_return1(void) {
+	unsigned char buffer[UART_TX_SIZE - 10] = {0};
+	unsigned char bufferExpected[UART_TX_SIZE] = {0};
+	int len = 0;
+	
+	strcpy((char *)buffer, "empty string or incomplete commmand");
+	snprintf((char *)bufferExpected, sizeof(bufferExpected), "#W%s%03d!", buffer, calcChecksum(buffer, strlen((const char*)buffer)));
+
+	memset(buffer, 0, sizeof(buffer));
+	sendWarningErrorResponse(-1);
+	getTxBuffer(buffer, &len);
+
+	TEST_ASSERT_EQUAL_STRING(bufferExpected, buffer);
+}
+
+void test_error_during_return2(void) {
+	unsigned char buffer[UART_TX_SIZE - 10] = {0};
+	unsigned char bufferExpected[UART_TX_SIZE] = {0};
+	int len = 0;
+	
+	strcpy((char *)buffer, "invalid command was found");
+	snprintf((char *)bufferExpected, sizeof(bufferExpected), "#E%s%03d!", buffer, calcChecksum(buffer, strlen((const char*)buffer)));
+
+	memset(buffer, 0, sizeof(buffer));
+	sendWarningErrorResponse(-2);
+	getTxBuffer(buffer, &len);
+
+	TEST_ASSERT_EQUAL_STRING(bufferExpected, buffer);
+}
+
+void test_error_during_return3(void) {
+	unsigned char buffer[UART_TX_SIZE - 10] = {0};
+	unsigned char bufferExpected[UART_TX_SIZE] = {0};
+	int len = 0;
+	
+	strcpy((char *)buffer, "checksum error was detected");
+	snprintf((char *)bufferExpected, sizeof(bufferExpected), "#E%s%03d!", buffer, calcChecksum(buffer, strlen((const char*)buffer)));
+
+	memset((char *)buffer, 0, sizeof(buffer));
+	sendWarningErrorResponse(-3);
+	getTxBuffer(buffer, &len);
+
+	TEST_ASSERT_EQUAL_STRING(bufferExpected, buffer);
+}
+
+void test_error_during_return4(void) {
+	unsigned char buffer[UART_TX_SIZE - 10] = {0};
+	unsigned char bufferExpected[UART_TX_SIZE] = {0};
+	int len = 0;
+	
+	strcpy((char *)buffer, "string format is wrong");
+	snprintf((char *)bufferExpected, sizeof(bufferExpected), "#E%s%03d!", buffer, calcChecksum(buffer, strlen((const char*)buffer)));
+
+	memset(buffer, 0, sizeof(buffer));
+	sendWarningErrorResponse(-4);
+	getTxBuffer(buffer, &len);
+
+	TEST_ASSERT_EQUAL_STRING(bufferExpected, buffer);
+}
+
 int main(void) {
 	UNITY_BEGIN();
 	
@@ -217,6 +277,10 @@ int main(void) {
 	RUN_TEST(test_checksum_calculation);
 	RUN_TEST(test_tx_buffer_output);
 	RUN_TEST(test_call_cmd_in_the_middle_of_command);
+	RUN_TEST(test_warning_during_return1);
+	RUN_TEST(test_error_during_return2);
+	RUN_TEST(test_error_during_return3);
+	RUN_TEST(test_error_during_return4);
 	
 	return UNITY_END();
 }
