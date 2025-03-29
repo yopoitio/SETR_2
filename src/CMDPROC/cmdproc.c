@@ -186,33 +186,75 @@ int cmdProcessor(void)
 					sendWarningErrorResponse(-3);
 					return -3;
 				}
-				int temp_hist[20];
-				int hum_hist[20];
-				int co2_hist[20];
+
+				int temp_hist[20], hum_hist[20], co2_hist[20];
 
 				simulate_temp_sensor(UARTRxBuffer[begin+1],temp_hist);
 				simulate_hum_sensor(UARTRxBuffer[begin+1],hum_hist);
 				simulate_co2_sensor(UARTRxBuffer[begin+1],co2_hist);
 
-				char buffer[20];
-				int size;
+				
+
+				char tx_aux_buffer[20*14+4];
+				memset(tx_aux_buffer, 0, sizeof(tx_aux_buffer));
+
+				strcat(tx_aux_buffer,"t");
+				for(int i = 0; i < 20; i++) {
+					char aux_buffer[5];
+					if(temp_hist[i] >= 0) {
+						if(temp_hist[i] == __INT_MAX__) {
+							snprintf(aux_buffer,sizeof(aux_buffer),"   ,");
+						}
+						else {
+							snprintf(aux_buffer,sizeof(aux_buffer),"+%02d,",temp_hist[i]);
+                        }
+					}
+					else {
+						snprintf(aux_buffer,sizeof(aux_buffer),"%03d,",temp_hist[i]);
+					}
+					
+					strcat(tx_aux_buffer,aux_buffer);
+				}
+
+				strcat(tx_aux_buffer,"h");
+				for(int i = 0; i < 20; i++) {
+					char aux_buffer[5];
+					if(hum_hist[i] == __INT_MAX__) {
+						snprintf(aux_buffer,sizeof(aux_buffer),"   ,");
+					}
+					else {
+						snprintf(aux_buffer,sizeof(aux_buffer),"%03d,",hum_hist[i]);
+					}
+					strcat(tx_aux_buffer,aux_buffer);
+				}
+
+				strcat(tx_aux_buffer,"c");
+				for(int i = 0; i < 20; i++) {
+					char aux_buffer[7];
+					if(co2_hist[i] == __INT_MAX__) {
+						snprintf(aux_buffer,sizeof(aux_buffer),"     ,");
+					}
+					else {
+						snprintf(aux_buffer,sizeof(aux_buffer),"%05d,",co2_hist[i]);
+					}
+					strcat(tx_aux_buffer,aux_buffer);					
+				}
 
 				txChar('#');
 				txChar('L');
-				for(int i = 0; i < 20; i++) {
-					if(temp_hist[i]>=0) {
-						sprintf(buffer,"%d",temp_hist[i]);
-						printf("--------------------------%d\n",temp_hist[i]);
-						/*txChar('+');
-						txChar(itoa(temp_hist[i]/100));
-						txChar('+');
-						txChar('+');*/
-					}
-					else {
-						txChar('-');
-					}
+				for(int i = 0; i < (int)sizeof(tx_aux_buffer)-1; i++) {
+					txChar(tx_aux_buffer[i]);
 				}
+				uint8_t checksum = calcChecksum((uint8_t *)&tx_aux_buffer[0],sizeof(tx_aux_buffer)-1);
+				
+				char checksum_buffer[4];
+				snprintf(checksum_buffer,sizeof(checksum_buffer),"%03d",checksum);
+				txChar(checksum_buffer[0]);
+				txChar(checksum_buffer[1]);
+				txChar(checksum_buffer[2]);
+				txChar('!');
 
+				resetRxBufferCommand(begin,end);
 				return 0;
 
 			case 'R':

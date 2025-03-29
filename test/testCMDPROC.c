@@ -121,7 +121,7 @@ void test_tx_buffer_output(void) {
 	txChar('l');
 	txChar('o');
 	getTxBuffer(buffer, &len);
-	TEST_ASSERT_EQUAL(0, strcmp((char*)buffer,"Hello"));
+	TEST_ASSERT_EQUAL_STRING(buffer,"Hello");
 	TEST_ASSERT_EQUAL(5, len);
 }
 
@@ -204,22 +204,20 @@ void test_call_cmd_in_the_middle_of_command(void) {
 void test_temp_sensor(void) {
 	int returns;
 	int history[20] = {__INT_MAX__};
-	int history_confirm[20] = {-46, 34, -50, 2, -19, 21, -42, 7, -14, 40, -3, 58, 11, -27, 45, 0, 33, -22, 49, -35};
+	int history_confirm[20] = {-46, 34, -50, 2, -19, 21, -42, 7, -14, 40, -2, 58, 11, -27, 45, 0, 33, -22, 49, -35};
 
 	returns = simulate_temp_sensor('A',NULL);
 	TEST_ASSERT_EQUAL(-10, returns);
 	returns = simulate_temp_sensor('P',NULL);
 	TEST_ASSERT_EQUAL(23, returns);
 
-	returns = simulate_temp_sensor('R',NULL);
+	simulate_temp_sensor('R',NULL);
 	for(int i = 0; i < 25;i++) {
 		simulate_temp_sensor('P',NULL);
 	}
 
 	simulate_temp_sensor('L',history);
-	for(int i=0;i<20;i++) {
-		TEST_ASSERT_EQUAL(history_confirm[i], history[i]);
-	}
+	TEST_ASSERT_EQUAL_INT_ARRAY(history_confirm,history,20);
 }
 
 void test_hum_sensor(void) {
@@ -232,15 +230,13 @@ void test_hum_sensor(void) {
 	returns = simulate_hum_sensor('P',NULL);
 	TEST_ASSERT_EQUAL(89, returns);
 
-	returns = simulate_hum_sensor('R',NULL);
+	simulate_hum_sensor('R',NULL);
 	for(int i = 0; i < 25;i++) {
 		simulate_hum_sensor('P',NULL);
 	}
 
 	simulate_hum_sensor('L',history);
-	for(int i=0;i<20;i++) {
-		TEST_ASSERT_EQUAL(history_confirm[i], history[i]);
-	}
+	TEST_ASSERT_EQUAL_INT_ARRAY(history_confirm,history,20);
 }
 
 void test_co2_sensor(void) {
@@ -253,26 +249,25 @@ void test_co2_sensor(void) {
 	returns = simulate_co2_sensor('P',NULL);
 	TEST_ASSERT_EQUAL(1203, returns);
 
-	returns = simulate_co2_sensor('R',NULL);
+	simulate_co2_sensor('R',NULL);
 	for(int i = 0; i < 25;i++) {
 		simulate_co2_sensor('P',NULL);
 	}
 
 	simulate_co2_sensor('L',history);
-	for(int i=0;i<20;i++) {
-		TEST_ASSERT_EQUAL(history_confirm[i], history[i]);
-	}
+	TEST_ASSERT_EQUAL_INT_ARRAY(history_confirm,history,20);
 }
 
 void test_warning_during_return1(void) {
-	unsigned char buffer[UART_TX_SIZE - 10] = {0};
-	unsigned char bufferExpected[UART_TX_SIZE] = {0};
+	unsigned char buffer[UART_TX_SIZE - 10];
+	unsigned char bufferExpected[UART_TX_SIZE];
+	memset(buffer, 0, sizeof(buffer));
+	memset(bufferExpected, 0, sizeof(bufferExpected));
 	int len = 0;
 	
 	strcpy((char *)buffer, "empty string or incomplete commmand");
 	snprintf((char *)bufferExpected, sizeof(bufferExpected), "#W%s%03d!", buffer, calcChecksum(buffer, strlen((const char*)buffer)));
 
-	memset(buffer, 0, sizeof(buffer));
 	sendWarningErrorResponse(-1);
 	getTxBuffer(buffer, &len);
 
@@ -280,14 +275,15 @@ void test_warning_during_return1(void) {
 }
 
 void test_error_during_return2(void) {
-	unsigned char buffer[UART_TX_SIZE - 10] = {0};
-	unsigned char bufferExpected[UART_TX_SIZE] = {0};
+	unsigned char buffer[UART_TX_SIZE - 10];
+	unsigned char bufferExpected[UART_TX_SIZE];
+	memset(buffer, 0, sizeof(buffer));
+	memset(bufferExpected, 0, sizeof(bufferExpected));
 	int len = 0;
 	
 	strcpy((char *)buffer, "invalid command was found");
 	snprintf((char *)bufferExpected, sizeof(bufferExpected), "#E%s%03d!", buffer, calcChecksum(buffer, strlen((const char*)buffer)));
 
-	memset(buffer, 0, sizeof(buffer));
 	sendWarningErrorResponse(-2);
 	getTxBuffer(buffer, &len);
 
@@ -295,14 +291,15 @@ void test_error_during_return2(void) {
 }
 
 void test_error_during_return3(void) {
-	unsigned char buffer[UART_TX_SIZE - 10] = {0};
-	unsigned char bufferExpected[UART_TX_SIZE] = {0};
+	unsigned char buffer[UART_TX_SIZE - 10];
+	unsigned char bufferExpected[UART_TX_SIZE];
+	memset(buffer, 0, sizeof(buffer));
+	memset(bufferExpected, 0, sizeof(bufferExpected));
 	int len = 0;
 	
 	strcpy((char *)buffer, "checksum error was detected");
 	snprintf((char *)bufferExpected, sizeof(bufferExpected), "#E%s%03d!", buffer, calcChecksum(buffer, strlen((const char*)buffer)));
 
-	memset((char *)buffer, 0, sizeof(buffer));
 	sendWarningErrorResponse(-3);
 	getTxBuffer(buffer, &len);
 
@@ -310,18 +307,59 @@ void test_error_during_return3(void) {
 }
 
 void test_error_during_return4(void) {
-	unsigned char buffer[UART_TX_SIZE - 10] = {0};
-	unsigned char bufferExpected[UART_TX_SIZE] = {0};
+	unsigned char buffer[UART_TX_SIZE - 10];
+	unsigned char bufferExpected[UART_TX_SIZE];
+	memset(buffer, 0, sizeof(buffer));
+	memset(bufferExpected, 0, sizeof(bufferExpected));
 	int len = 0;
 	
 	strcpy((char *)buffer, "string format is wrong");
 	snprintf((char *)bufferExpected, sizeof(bufferExpected), "#E%s%03d!", buffer, calcChecksum(buffer, strlen((const char*)buffer)));
 
-	memset(buffer, 0, sizeof(buffer));
 	sendWarningErrorResponse(-4);
 	getTxBuffer(buffer, &len);
 
 	TEST_ASSERT_EQUAL_STRING(bufferExpected, buffer);
+}
+
+void test_cmd_L_and_R_txBuffer(void) {
+	unsigned char buffer[UART_TX_SIZE];
+	const char *bufferExpected = "#Lt-46,+34,-50,+02,-19,+21,-42,+07,-14,+40,-02,+58,+11,-27,+45,+00,+33,-22,+49,-35,h015,000,068,077,036,053,009,022,060,045,100,031,082,099,003,048,073,011,067,025,c13579,05678,15234,00400,00987,16000,01987,13456,00765,17000,05432,18765,12004,09876,14235,06789,14987,04321,08765,02345,014!";
+	const char *bufferExpected_2 = "#Lt   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,h   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,   ,c     ,     ,     ,     ,     ,     ,     ,     ,     ,     ,     ,     ,     ,     ,     ,     ,     ,     ,     ,     ,015!";
+	memset(buffer, 0, sizeof(buffer));
+	int len = 0;
+
+	rxChar('#');
+	rxChar('L');
+	rxChar('0');
+	rxChar('7');
+	rxChar('6');
+	rxChar('!');
+	cmdProcessor();
+
+	getTxBuffer(buffer, &len);
+	TEST_ASSERT_EQUAL_STRING(bufferExpected, buffer);
+
+	memset(buffer, 0, sizeof(buffer));
+	resetTxBuffer();
+
+	rxChar('#');
+	rxChar('R');
+	rxChar('0');
+	rxChar('8');
+	rxChar('2');
+	rxChar('!');
+	cmdProcessor();
+	rxChar('#');
+	rxChar('L');
+	rxChar('0');
+	rxChar('7');
+	rxChar('6');
+	rxChar('!');
+	cmdProcessor();
+
+	getTxBuffer(buffer, &len);
+	TEST_ASSERT_EQUAL_STRING(bufferExpected_2, buffer);
 }
 
 int main(void) {
@@ -347,6 +385,7 @@ int main(void) {
 	RUN_TEST(test_error_during_return2);
 	RUN_TEST(test_error_during_return3);
 	RUN_TEST(test_error_during_return4);
+	RUN_TEST(test_cmd_L_and_R_txBuffer);
 	
 	return UNITY_END();
 }
